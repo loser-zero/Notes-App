@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="note.png" type="image/x-icon" />
+    <title>DeathNote</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <h1>Заметки</h1>
+
+    <h2>Добавить новую заметку:</h2>
+
+    <form id="addNoteForm">
+        <label for="noteText">Текст заметки:</label>
+        <input type="text" id="noteText" name="noteText" />
+        <button type="submit">Добавить</button>
+    </form>
+
+    <h2>Список заметок:</h2>
+    <div class="notes">
+        <ul id="noteList"></ul>
+    </div>
+
+    <script>
+        const noteList = document.getElementById("noteList");
+
+        async function displayNotes() {
+            noteList.innerHTML = ""; // Очистка предыдущего содержимого
+            const response = await fetch("/get-notes");
+            const notes = await response.json();
+
+            notes.forEach((note) => {
+                const li = document.createElement("li");
+                li.textContent = note.note_text;
+
+                const deleteButton = document.createElement("button");
+                deleteButton.textContent = "Удалить";
+                deleteButton.addEventListener("click", async () => {
+                    const result = confirm("Вы уверены, что хотите удалить эту заметку?");
+                    if (result) {
+                        await fetch(`/delete-note/${note.note_id}`, { method: "DELETE" });
+                        displayNotes(); // Обновление списка после удаления
+                    }
+                });
+
+                const updateButton = document.createElement("button");
+                updateButton.textContent = "Изменить";
+                updateButton.addEventListener("click", async () => {
+                    let updatedNoteText = prompt("Введите новый текст для заметки:");
+                    
+                    // Проверяем, что поле не пустое перед изменением
+                    if (!updatedNoteText.trim()) {
+                        alert("Поле ввода пустое");
+                        return;
+                    }
+
+                    const response = await fetch(`/update-note/${note.note_id}`, {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ updatedNoteText }),
+                    });
+                    displayNotes(); // Обновление списка после изменения
+                });
+
+                li.appendChild(deleteButton);
+                li.appendChild(updateButton);
+                noteList.appendChild(li);
+            });
+        }
+
+        document.getElementById("addNoteForm").addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const noteText = document.getElementById("noteText").value;
+            
+            // Проверяем, что поле не пустое перед отправкой
+            if (!noteText.trim()) {
+                alert("Поле ввода пустое");
+                return;
+            }
+
+            const response = await fetch("/add-note", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ noteText }),
+            });
+            document.getElementById("noteText").value = ""; // Очистка поля ввода
+            displayNotes(); // Обновление списка после добавления заметки
+        });
+
+        // Загрузка списка заметок при загрузке страницы
+        displayNotes();
+    </script>
+</body>
+</html>
